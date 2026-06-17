@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>车辆信息查询系统</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --primary:#3B82F6;--primary-dark:#2563EB;--primary-light:#EFF6FF;
+  --success:#10B981;--success-light:#ECFDF5;
+  --warning:#F59E0B;--warning-light:#FFFBEB;
+  --danger:#EF4444;--danger-light:#FEF2F2;
+  --g50:#F9FAFB;--g100:#F3F4F6;--g200:#E5E7EB;--g300:#D1D5DB;
+  --g400:#9CA3AF;--g500:#6B7280;--g600:#4B5563;--g700:#374151;
+  --g800:#1F2937;--g900:#111827;
+  --radius:10px;--shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 12px rgba(0,0,0,.1);
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+}
+body{font-family:var(--font);background:var(--g50);color:var(--g800);line-height:1.6;min-height:100vh}
+
+.header{background:linear-gradient(135deg,#3B82F6 0%,#6366F1 100%);color:#fff;position:sticky;top:0;z-index:100;box-shadow:var(--shadow-md)}
+.header-inner{max-width:900px;margin:0 auto;padding:16px 20px}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.header h1{font-size:20px;font-weight:600;display:flex;align-items:center;gap:8px}
+.header h1 .icon{width:32px;height:32px;background:rgba(255,255,255,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.data-status{font-size:12px;opacity:.85;display:flex;align-items:center;gap:6px}
+.data-status .dot{width:8px;height:8px;background:#52FF88;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+.search-bar{max-width:900px;margin:0 auto;padding:0 20px 16px}
+.search-box{display:flex;background:rgba(255,255,255,.15);border-radius:var(--radius);overflow:hidden}
+.search-box input{flex:1;border:none;background:transparent;color:#fff;font-size:16px;padding:12px 16px;outline:none}
+.search-box input::placeholder{color:rgba(255,255,255,.6)}
+.search-box button{background:rgba(255,255,255,.25);border:none;color:#fff;padding:12px 24px;font-size:15px;font-weight:500;cursor:pointer;transition:background .2s}
+.search-box button:hover{background:rgba(255,255,255,.35)}
+
+.stats-bar{max-width:900px;margin:0 auto;padding:12px 20px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.stat-card{background:#fff;border-radius:var(--radius);padding:8px 16px;box-shadow:var(--shadow);font-size:13px;color:var(--g600);display:flex;align-items:center;gap:6px}
+.stat-card .num{font-size:18px;font-weight:700;color:var(--g800)}
+.filter-tag{background:#fff;border:1px solid var(--g200);border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;transition:all .2s;color:var(--g600)}
+.filter-tag:hover{border-color:var(--primary);color:var(--primary)}
+.filter-tag.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+.results-header{max-width:900px;margin:0 auto;padding:12px 20px 4px;font-size:14px;color:var(--g500)}
+.results-header strong{color:var(--g800)}
+
+.results-container{max-width:900px;margin:0 auto;padding:8px 20px}
+
+.result-card{background:#fff;border-radius:var(--radius);padding:16px;margin-bottom:10px;box-shadow:var(--shadow);transition:box-shadow .2s}
+.result-card:hover{box-shadow:var(--shadow-md)}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.card-header-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.plate-badge{background:var(--primary-light);color:var(--primary-dark);font-weight:700;font-size:15px;padding:4px 10px;border-radius:6px;letter-spacing:.5px}
+.table-badge{font-size:11px;padding:3px 8px;border-radius:4px;font-weight:500}
+.table-badge.pre{background:#FEF3C7;color:#92400E}
+.table-badge.collected{background:#D1FAE5;color:#065F46}
+.table-badge.pending{background:#DBEAFE;color:#1E40AF}
+.card-expand-btn{background:none;border:1px solid var(--g200);border-radius:6px;padding:4px 10px;cursor:pointer;color:var(--g500);font-size:12px;transition:all .2s}
+.card-expand-btn:hover{border-color:var(--primary);color:var(--primary)}
+.card-expand-btn.open{transform:rotate(180deg);color:var(--primary);border-color:var(--primary)}
+
+.card-summary{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--g600)}
+.summary-item .label{color:var(--g400);font-size:12px}
+.summary-item .value{color:var(--g700);font-weight:500}
+.summary-divider{color:var(--g300);margin:0 2px}
+
+.card-details{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.card-details.open{max-height:2000px}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px 16px;padding-top:8px;border-top:1px solid var(--g100);margin-top:8px}
+.detail-item.full-width{grid-column:1/-1}
+.d-label{font-size:11px;color:var(--g400);margin-bottom:1px}
+.d-value{font-size:13px;color:var(--g700)}
+.d-value.highlight{color:var(--danger);font-weight:600}
+
+.pagination{max-width:900px;margin:0 auto;padding:12px 20px 24px;display:none;justify-content:center;gap:4px;flex-wrap:wrap}
+.page-btn{background:#fff;border:1px solid var(--g200);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--g600);transition:all .2s}
+.page-btn:hover{border-color:var(--primary);color:var(--primary)}
+.page-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.page-btn:disabled{opacity:.4;cursor:not-allowed}
+
+.empty-state{text-align:center;padding:48px 20px;color:var(--g400)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty-state h3{font-size:18px;color:var(--g600);margin-bottom:6px}
+.empty-state p{font-size:14px}
+
+.loading{text-align:center;padding:48px 20px}
+.spinner{width:36px;height:36px;border:3px solid var(--g200);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:var(--g500);font-size:14px}
+
+/* Loading progress bar for data */
+.loading-overlay{position:fixed;inset:0;background:var(--g50);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s}
+.loading-overlay.hidden{opacity:0;pointer-events:none}
+.loading-overlay .logo{font-size:48px;margin-bottom:16px}
+.loading-overlay h2{font-size:20px;color:var(--g800);margin-bottom:8px}
+.loading-overlay .progress-bar{width:260px;height:6px;background:var(--g200);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.loading-overlay .progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),#6366F1);border-radius:3px;width:0;transition:width .3s}
+.loading-overlay .progress-text{font-size:13px;color:var(--g500)}
+
+@media(max-width:600px){
+  .header h1{font-size:17px}
+  .header h1 .icon{width:28px;height:28px;font-size:16px}
+  .stats-bar{gap:8px}
+  .stat-card{padding:6px 10px;font-size:12px}
+  .stat-card .num{font-size:15px}
+  .detail-grid{grid-template-columns:repeat(2,1fr);gap:4px 10px}
+  .plate-badge{font-size:14px;padding:3px 8px}
+}
+</style>
+</head>
+<body>
+
+<!-- Loading overlay for initial data fetch -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="logo">🚗</div>
+  <h2>车辆信息查询系统</h2>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="progress-text" id="progressText">正在加载数据...</div>
+</div>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-top">
+      <h1><div class="icon">🚗</div> 车辆信息查询</h1>
+      <div class="data-status"><span class="dot"></span><span id="dataStatus">连接中...</span></div>
+    </div>
+    <div class="search-bar" style="padding:0">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="输入车牌号、合同号、客户姓名搜索..." autocomplete="off">
+        <button onclick="doSearch(1)">搜索</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-card">总计 <span class="num" id="statTotal">-</span> 条</div>
+  <div class="stat-card">预派单 <span class="num" id="statPre">-</span></div>
+  <div class="stat-card">已收车 <span class="num" id="statCollected">-</span></div>
+  <div class="stat-card">待收车 <span class="num" id="statPending">-</span></div>
+  <div class="filter-tag active" data-table="all" onclick="filterTable(this)">全部</div>
+  <div class="filter-tag" data-table="预派单" onclick="filterTable(this)">📋 预派单</div>
+  <div class="filter-tag" data-table="派单已收车" onclick="filterTable(this)">✅ 已收车</div>
+  <div class="filter-tag" data-table="派单待收车" onclick="filterTable(this)">⏳ 待收车</div>
+</div>
+
+<div class="results-header" id="resultsCount">请输入车牌号或关键词开始查询</div>
+<div class="results-container" id="resultsContainer"></div>
+<div class="pagination" id="pagination"></div>
+
+<script>
+const PAGE_SIZE = 20;
+let allRecords = [];
+let currentResults = [];
+let currentPage = 1;
+let currentTableFilter = 'all';
+let dataLoaded = false;
+let allSearchResults = [];
+
+// --- Progress loading ---
+const progressFill = document.getElementById('progressFill');
+const progressText = document.getElementById('progressText');
+
+function setProgress(pct, text) {
+  progressFill.style.width = pct + '%';
+  if (text) progressText.textContent = text;
+}
+
+// --- Load data: compact array format ---
+let F = []; // field names
+
+async function loadData() {
+  try {
+    setProgress(5, '正在连接数据源...');
+
+    // Load s.json with streaming progress
+    const res = await fetch('s.json');
+    if (!res.ok) throw new Error('s.json 加载失败 (HTTP ' + res.status + ')');
+
+    const contentLen = res.headers.get('content-length');
+    const totalBytes = contentLen ? parseInt(contentLen) : 0;
+
+    if (!res.body) {
+      // Fallback: no streaming
+      const data = await res.json();
+      processData(data);
+      return;
+    }
+
+    // Stream download with progress
+    const reader = res.body.getReader();
+    const chunks = [];
+    let received = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (totalBytes > 0) {
+        const pct = 10 + Math.floor((received / totalBytes) * 75);
+        const mb = (received / 1048576).toFixed(1);
+        setProgress(pct, `正在下载: ${mb} / ${(totalBytes/1048576).toFixed(1)} MB`);
+      } else {
+        const pct = 10 + Math.min(75, Math.floor(received / 200000));
+        setProgress(pct, `正在下载: ${(received/1048576).toFixed(1)} MB`);
+      }
+    }
+
+    setProgress(88, '正在解析数据...');
+    const allBuf = new Uint8Array(received);
+    let pos = 0;
+    for (const c of chunks) { allBuf.set(c, pos); pos += c.length; }
+    const text = new TextDecoder('utf-8').decode(allBuf);
+    const data = JSON.parse(text);
+    processData(data);
+
+  } catch(e) {
+    console.error('Load error:', e);
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    document.getElementById('resultsContainer').innerHTML =
+      '<div class="empty-state"><div class="empty-icon">⚠️</div><h3>数据加载失败</h3><p>' + e.message + '</p><p style="margin-top:8px">请检查网络后刷新页面重试</p></div>';
+  }
+}
+
+function processData(data) {
+  F = data.f || [];  // field names
+  const rawRows = data.d || [];  // array rows
+  const tables = data.t || {};
+  const total = data.n || rawRows.length;
+  const lastUpdate = data.u || '';
+
+  // Convert arrays to objects for easier access
+  allRecords = rawRows.map(row => {
+    const obj = {};
+    obj._table = row[0];
+    obj._record_id = row[1];
+    for (let i = 0; i < F.length; i++) {
+      if (row[i + 2]) obj[F[i]] = row[i + 2];
+    }
+    return obj;
+  });
+
+  document.getElementById('statTotal').textContent = total.toLocaleString();
+  document.getElementById('statPre').textContent = (tables['预派单'] || 0).toLocaleString();
+  document.getElementById('statCollected').textContent = (tables['派单已收车'] || 0).toLocaleString();
+  document.getElementById('statPending').textContent = (tables['派单待收车'] || 0).toLocaleString();
+
+  if (lastUpdate) {
+    const d = new Date(lastUpdate);
+    document.getElementById('dataStatus').textContent =
+      `${total.toLocaleString()} 条就绪 | ${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} 更新`;
+  } else {
+    document.getElementById('dataStatus').textContent = `${total.toLocaleString()} 条就绪`;
+  }
+
+  dataLoaded = true;
+  setProgress(100, '加载完成!');
+  setTimeout(() => { document.getElementById('loadingOverlay').classList.add('hidden'); }, 400);
+}
+
+function filterTable(el) {
+  document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentTableFilter = el.dataset.table;
+  const query = document.getElementById('searchInput').value.trim();
+  if (query) doSearch(1);
+}
+
+function doSearch(page) {
+  const query = document.getElementById('searchInput').value.trim();
+  if (!query) { showEmpty(); return; }
+  if (!dataLoaded) { showError('数据尚未加载完成，请稍候'); return; }
+  currentPage = page;
+
+  const kw = query.toLowerCase();
+  allSearchResults = allRecords.filter(r => {
+    const tbl = r._t || r._table || '';
+    if (currentTableFilter !== 'all' && tbl !== currentTableFilter) return false;
+    return (r['车牌号'] || '').toLowerCase().includes(kw)
+        || (r['合同号'] || '').toLowerCase().includes(kw)
+        || (r['客户'] || '').toLowerCase().includes(kw)
+        || (r['客户电话'] || '').toLowerCase().includes(kw)
+        || (r['车型'] || '').toLowerCase().includes(kw)
+        || (r['负责人'] || '').toLowerCase().includes(kw)
+        || (r['业务员'] || '').toLowerCase().includes(kw)
+        || (r['定位地址'] || '').toLowerCase().includes(kw);
+  });
+
+  currentResults = allSearchResults;
+  currentPage = 1;
+  renderPage();
+}
+
+function renderPage() {
+  const total = currentResults.length;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const end = Math.min(start + PAGE_SIZE, total);
+  const pageResults = currentResults.slice(start, end);
+
+  document.getElementById('resultsCount').innerHTML =
+    `共找到 <strong>${total}</strong> 条匹配记录` + (currentTableFilter !== 'all' ? `（${currentTableFilter}）` : '');
+
+  if (pageResults.length === 0) {
+    document.getElementById('resultsContainer').innerHTML =
+      '<div class="empty-state"><div class="empty-icon">🔍</div><h3>未找到匹配记录</h3><p>请尝试其他关键词或切换筛选条件</p></div>';
+    document.getElementById('pagination').style.display = 'none';
+    return;
+  }
+
+  let html = '';
+  pageResults.forEach((r, i) => {
+    const tbl = r._t || r._table || '';
+    const tableBadge = getTableBadge(tbl);
+    const esc = (s) => s ? String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+    html += `
+    <div class="result-card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <span class="plate-badge">${esc(r['车牌号']) || '-'}</span>
+          ${tableBadge}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="card-expand-btn" onclick="toggleCard(this)" title="展开详情">▼</button>
+        </div>
+      </div>
+      <div class="card-summary">
+        ${summaryItem('客户', esc(r['客户']))}
+        <span class="summary-divider"></span>
+        ${summaryItem('车型', esc(r['车型']))}
+        <span class="summary-divider"></span>
+        ${summaryItem('合同号', esc(r['合同号']))}
+        <span class="summary-divider"></span>
+        ${summaryItem('负责人', esc(r['负责人']))}
+        <span class="summary-divider"></span>
+        ${summaryItem('组别', esc(r['组别']))}
+      </div>
+      <div class="card-details">
+        <div style="height:8px"></div>
+        ${renderDetails(r)}
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('resultsContainer').innerHTML = html;
+  if (totalPages > 1) { renderPagination(totalPages); document.getElementById('pagination').style.display = 'flex'; }
+  else { document.getElementById('pagination').style.display = 'none'; }
+}
+
+function getTableBadge(table) {
+  if (table === '预派单') return '<span class="table-badge pre">📋 预派单</span>';
+  if (table === '派单已收车') return '<span class="table-badge collected">✅ 已收车</span>';
+  if (table === '派单待收车') return '<span class="table-badge pending">⏳ 待收车</span>';
+  return '';
+}
+
+function summaryItem(label, value) {
+  const v = value || '-';
+  return `<span class="summary-item"><span class="label">${label}：</span><span class="value">${v}</span></span>`;
+}
+
+function renderDetails(r) {
+  const esc = (s) => s ? String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+  const fields = [
+    ['基本信息', [
+      ['车牌号', esc(r['车牌号'])], ['合同号', esc(r['合同号'])], ['客户', esc(r['客户'])],
+      ['车型', esc(r['车型'])], ['月供', esc(r['月供'])], ['客户电话', esc(r['客户电话'])],
+    ]],
+    ['业务信息', [
+      ['业务分类', esc(r['业务分类'])], ['派单类型', esc(r['派单类型'])], ['等级', esc(r['等级'])],
+      ['分部', esc(r['分部'])], ['组别', esc(r['组别'])], ['履约期数', esc(r['履约期数'])],
+    ]],
+    ['人员信息', [
+      ['负责人', esc(r['负责人'])], ['业务员', esc(r['业务员'])], ['客服', esc(r['客服'])],
+      ['分析人员', esc(r['分析人员'])], ['三催人员', esc(r['三催人员'])],
+    ]],
+    ['时间信息', [
+      ['欠款日期', esc(r['欠款日期'])], ['当前欠款天数', esc(r['当前欠款天数']), isDanger],
+      ['当前派单天数', esc(r['当前派单天数']), isWarning],
+      ['实派外勤时间', esc(r['实派外勤时间'])], ['收回日期', esc(r['收回日期'])],
+      ['收回天数', esc(r['收回天数'])], ['预派时间', esc(r['预派时间'])],
+      ['三催时间', esc(r['三催时间'])], ['派单滞纳天数', esc(r['派单滞纳天数']), isDanger],
+    ]],
+    ['联系与定位', [
+      ['联系情况', esc(r['联系情况'])], ['定位地址', esc(r['定位地址']), null, true],
+      ['定位类型', esc(r['定位类型'])],
+    ]],
+    ['其他信息', [
+      ['行驶证', esc(r['行驶证'])], ['资料去向', esc(r['资料去向']), null, true],
+      ['领出钥匙数量', esc(r['领出钥匙数量'])], ['预计入库地', esc(r['预计入库地'])],
+      ['资料归还', esc(r['资料归还'])], ['是否留单', esc(r['是否留单'])],
+      ['排查', esc(r['排查'])],
+    ]],
+    ['备注', [
+      ['备注', esc(r['备注']), null, true],
+    ]],
+  ];
+
+  let html = '';
+  fields.forEach(([group, items]) => {
+    const hasItems = items.some(([label, val]) => val && val !== '-' && val !== '');
+    if (!hasItems) return;
+    html += `<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--g400);letter-spacing:.5px;margin-bottom:6px">${group}</div><div class="detail-grid">`;
+    items.forEach(([label, value, highlightFn, fullWidth]) => {
+      if (value && value !== '' && value !== '-') {
+        let cls = '';
+        if (highlightFn) cls = highlightFn(value);
+        html += `<div class="detail-item${fullWidth ? ' full-width' : ''}"><div class="d-label">${label}</div><div class="d-value ${cls}">${value}</div></div>`;
+      }
+    });
+    html += '</div></div>';
+  });
+  return html || '<div style="padding:8px;color:var(--g400);font-size:13px">暂无详细信息</div>';
+}
+
+function isDanger(v) {
+  const n = parseInt(String(v).replace(/[^0-9-]/g, ''));
+  return isNaN(n) ? '' : (n > 90 || n < -30 ? 'highlight' : '');
+}
+function isWarning(v) {
+  const n = parseInt(String(v).replace(/[^0-9-]/g, ''));
+  return isNaN(n) ? '' : (n > 30 ? 'highlight' : '');
+}
+
+function toggleCard(btn) {
+  btn.classList.toggle('open');
+  btn.closest('.result-card').querySelector('.card-details').classList.toggle('open');
+}
+
+function renderPagination(totalPages) {
+  let html = '';
+  html += `<button class="page-btn" ${currentPage<=1?'disabled':''} onclick="goPage(${currentPage-1})">上一页</button>`;
+  const range = getPageRange(currentPage, totalPages);
+  if (range[0] > 1) {
+    html += `<button class="page-btn" onclick="goPage(1)">1</button>`;
+    if (range[0] > 2) html += '<span style="color:var(--g400);padding:0 4px">...</span>';
+  }
+  range.forEach(p => { html += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`; });
+  if (range[range.length-1] < totalPages) {
+    if (range[range.length-1] < totalPages - 1) html += '<span style="color:var(--g400);padding:0 4px">...</span>';
+    html += `<button class="page-btn" onclick="goPage(${totalPages})">${totalPages}</button>`;
+  }
+  html += `<button class="page-btn" ${currentPage>=totalPages?'disabled':''} onclick="goPage(${currentPage+1})">下一页</button>`;
+  document.getElementById('pagination').innerHTML = html;
+}
+
+function getPageRange(current, total) {
+  const delta = 2, start = Math.max(1, current - delta), end = Math.min(total, current + delta), range = [];
+  for (let i = start; i <= end; i++) range.push(i);
+  return range;
+}
+function goPage(p) { currentPage = p; renderPage(); window.scrollTo({top:200,behavior:'smooth'}); }
+
+function showEmpty() {
+  document.getElementById('resultsContainer').innerHTML =
+    '<div class="empty-state"><div class="empty-icon">🚗</div><h3>输入车牌号开始查询</h3><p>支持车牌号、合同号、客户姓名等多维度搜索</p></div>';
+  document.getElementById('resultsCount').innerHTML = '请输入车牌号或关键词开始查询';
+  document.getElementById('pagination').style.display = 'none';
+}
+function showError(msg) {
+  document.getElementById('resultsContainer').innerHTML =
+    `<div class="empty-state"><div class="empty-icon">⚠️</div><h3>${msg}</h3></div>`;
+  document.getElementById('pagination').style.display = 'none';
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(1); });
+
+loadData();
+</script>
+</body>
+</html>
